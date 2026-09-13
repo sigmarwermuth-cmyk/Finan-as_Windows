@@ -24,9 +24,11 @@ export default function App() {
     summary,
     categoryExpenses,
     addTransaction,
+    updateTransaction,
     removeTransaction,
     toggleTransactionStatus,
     addAccount,
+    updateAccount,
     removeAccount,
     addGoal,
     addContributionToGoal,
@@ -102,6 +104,7 @@ export default function App() {
                 transactions={filteredTransactions}
                 accounts={accounts}
                 onAddTransaction={addTransaction}
+                onUpdateTransaction={updateTransaction}
                 onRemoveTransaction={removeTransaction}
                 onToggleStatus={toggleTransactionStatus}
               />
@@ -111,6 +114,7 @@ export default function App() {
               <AccountsCardsView
                 accounts={accounts}
                 onAddAccount={addAccount}
+                onUpdateAccount={updateAccount}
                 onRemoveAccount={removeAccount}
               />
             )}

@@ -1,20 +1,24 @@
 import React, { useState } from 'react';
 import { Account, AccountType } from '../types';
-import { CreditCard, Wallet, Plus, Trash2, Landmark, DollarSign, X } from 'lucide-react';
+import { CreditCard, Wallet, Plus, Trash2, Landmark, DollarSign, X, Pencil } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface AccountsCardsViewProps {
   accounts: Account[];
   onAddAccount: (acc: Omit<Account, 'id'>) => void;
+  onUpdateAccount: (acc: Account) => void;
   onRemoveAccount: (id: string) => void;
 }
 
 export const AccountsCardsView: React.FC<AccountsCardsViewProps> = ({
   accounts,
   onAddAccount,
+  onUpdateAccount,
   onRemoveAccount,
 }) => {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
+
   const [name, setName] = useState('');
   const [type, setType] = useState<AccountType>('checking');
   const [balance, setBalance] = useState('');
@@ -22,6 +26,30 @@ export const AccountsCardsView: React.FC<AccountsCardsViewProps> = ({
   const [limit, setLimit] = useState('');
   const [closingDay, setClosingDay] = useState('20');
   const [dueDay, setDueDay] = useState('27');
+
+  const handleOpenAddModal = () => {
+    setEditingAccountId(null);
+    setName('');
+    setType('checking');
+    setBalance('');
+    setColor('#F97316');
+    setLimit('');
+    setClosingDay('20');
+    setDueDay('27');
+    setShowAddModal(true);
+  };
+
+  const handleOpenEditModal = (acc: Account) => {
+    setEditingAccountId(acc.id);
+    setName(acc.name);
+    setType(acc.type);
+    setBalance(acc.balance.toString());
+    setColor(acc.color || '#F97316');
+    setLimit(acc.limit ? acc.limit.toString() : '');
+    setClosingDay(acc.closingDay ? acc.closingDay.toString() : '20');
+    setDueDay(acc.dueDay ? acc.dueDay.toString() : '27');
+    setShowAddModal(true);
+  };
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -34,19 +62,33 @@ export const AccountsCardsView: React.FC<AccountsCardsViewProps> = ({
     e.preventDefault();
     if (!name || !balance) return;
 
-    onAddAccount({
-      name,
-      type,
-      balance: parseFloat(balance),
-      color,
-      limit: type === 'credit' && limit ? parseFloat(limit) : undefined,
-      closingDay: type === 'credit' && closingDay ? parseInt(closingDay) : undefined,
-      dueDay: type === 'credit' && dueDay ? parseInt(dueDay) : undefined,
-    });
+    if (editingAccountId) {
+      onUpdateAccount({
+        id: editingAccountId,
+        name,
+        type,
+        balance: parseFloat(balance),
+        color,
+        limit: type === 'credit' && limit ? parseFloat(limit) : undefined,
+        closingDay: type === 'credit' && closingDay ? parseInt(closingDay) : undefined,
+        dueDay: type === 'credit' && dueDay ? parseInt(dueDay) : undefined,
+      });
+    } else {
+      onAddAccount({
+        name,
+        type,
+        balance: parseFloat(balance),
+        color,
+        limit: type === 'credit' && limit ? parseFloat(limit) : undefined,
+        closingDay: type === 'credit' && closingDay ? parseInt(closingDay) : undefined,
+        dueDay: type === 'credit' && dueDay ? parseInt(dueDay) : undefined,
+      });
+    }
 
     setName('');
     setBalance('');
     setLimit('');
+    setEditingAccountId(null);
     setShowAddModal(false);
   };
 
@@ -61,7 +103,7 @@ export const AccountsCardsView: React.FC<AccountsCardsViewProps> = ({
         </div>
 
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={handleOpenAddModal}
           className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white font-medium px-5 py-3 rounded-2xl shadow-md shadow-orange-500/20 transition-all text-sm cursor-pointer"
         >
           <Plus className="w-4 h-4" />
@@ -108,13 +150,22 @@ export const AccountsCardsView: React.FC<AccountsCardsViewProps> = ({
                         />
                         <span className="font-semibold text-sm font-display tracking-wide">{card.name}</span>
                       </div>
-                      <button
-                        onClick={() => onRemoveAccount(card.id)}
-                        className="text-stone-500 hover:text-rose-400 p-1"
-                        title="Remover Cartão"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleOpenEditModal(card)}
+                          className="text-stone-400 hover:text-orange-400 p-1 rounded transition-colors cursor-pointer"
+                          title="Editar Cartão"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => onRemoveAccount(card.id)}
+                          className="text-stone-500 hover:text-rose-400 p-1 rounded transition-colors cursor-pointer"
+                          title="Remover Cartão"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
 
                     <p className="text-xs text-stone-400 uppercase tracking-widest font-mono">Fatura Atual</p>
@@ -171,13 +222,22 @@ export const AccountsCardsView: React.FC<AccountsCardsViewProps> = ({
                     <span className="text-xs font-semibold uppercase px-2.5 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
                       {acc.type === 'checking' ? 'Conta Corrente' : acc.type === 'savings' ? 'Poupança' : acc.type === 'investment' ? 'Investimento' : 'Carteira'}
                     </span>
-                    <button
-                      onClick={() => onRemoveAccount(acc.id)}
-                      className="text-stone-400 hover:text-rose-500 p-1"
-                      title="Excluir Conta"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleOpenEditModal(acc)}
+                        className="text-stone-400 hover:text-orange-500 p-1 rounded transition-colors cursor-pointer"
+                        title="Editar Conta"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => onRemoveAccount(acc.id)}
+                        className="text-stone-400 hover:text-rose-500 p-1 rounded transition-colors cursor-pointer"
+                        title="Excluir Conta"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
                   <h4 className="font-semibold text-stone-900 dark:text-stone-100 text-sm font-display">{acc.name}</h4>
@@ -191,7 +251,7 @@ export const AccountsCardsView: React.FC<AccountsCardsViewProps> = ({
         </div>
       </div>
 
-      {/* Add Account Modal */}
+      {/* Add / Edit Account Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 backdrop-blur-sm p-4 overflow-y-auto">
           <motion.div
@@ -200,10 +260,15 @@ export const AccountsCardsView: React.FC<AccountsCardsViewProps> = ({
             className="w-full max-w-md rounded-3xl bg-white dark:bg-stone-900 p-7 shadow-2xl border border-stone-200 dark:border-stone-800"
           >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold font-display text-stone-900 dark:text-stone-50">Nova Conta / Cartão</h3>
+              <h3 className="text-xl font-bold font-display text-stone-900 dark:text-stone-50">
+                {editingAccountId ? 'Editar Conta / Cartão' : 'Nova Conta / Cartão'}
+              </h3>
               <button
-                onClick={() => setShowAddModal(false)}
-                className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-1 rounded-full"
+                onClick={() => {
+                  setShowAddModal(false);
+                  setEditingAccountId(null);
+                }}
+                className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-1 rounded-full cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -294,7 +359,7 @@ export const AccountsCardsView: React.FC<AccountsCardsViewProps> = ({
                 type="submit"
                 className="mt-4 w-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-3.5 rounded-2xl shadow-lg shadow-orange-500/20 transition-all text-sm cursor-pointer"
               >
-                Cadastrar Conta
+                {editingAccountId ? 'Salvar Alterações' : 'Cadastrar Conta'}
               </button>
             </form>
           </motion.div>

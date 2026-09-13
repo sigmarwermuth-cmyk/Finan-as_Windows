@@ -113,6 +113,42 @@ export function useFinanceStore() {
     setTransactions((prev) => prev.filter((t) => t.id !== id));
   };
 
+  const updateTransaction = (updatedTransaction: Transaction) => {
+    const oldTransaction = transactions.find((t) => t.id === updatedTransaction.id);
+    if (!oldTransaction) return;
+
+    setAccounts((prevAccs) => {
+      let nextAccs = [...prevAccs];
+      // Revert old transaction effect if old status was 'paid'
+      if (oldTransaction.status === 'paid') {
+        nextAccs = nextAccs.map((acc) => {
+          if (acc.name === oldTransaction.account) {
+            const revertDelta = oldTransaction.type === 'income' ? -oldTransaction.amount : oldTransaction.amount;
+            return { ...acc, balance: acc.balance + revertDelta };
+          }
+          return acc;
+        });
+      }
+
+      // Apply new transaction effect if new status is 'paid'
+      if (updatedTransaction.status === 'paid') {
+        nextAccs = nextAccs.map((acc) => {
+          if (acc.name === updatedTransaction.account) {
+            const applyDelta = updatedTransaction.type === 'income' ? updatedTransaction.amount : -updatedTransaction.amount;
+            return { ...acc, balance: acc.balance + applyDelta };
+          }
+          return acc;
+        });
+      }
+
+      return nextAccs;
+    });
+
+    setTransactions((prev) =>
+      prev.map((t) => (t.id === updatedTransaction.id ? updatedTransaction : t))
+    );
+  };
+
   const toggleTransactionStatus = (id: string) => {
     setTransactions((prev) =>
       prev.map((t) => {
@@ -142,6 +178,16 @@ export function useFinanceStore() {
       id: uuidv4(),
     };
     setAccounts((prev) => [...prev, newAcc]);
+  };
+
+  const updateAccount = (updatedAcc: Account) => {
+    const oldAcc = accounts.find((a) => a.id === updatedAcc.id);
+    if (oldAcc && oldAcc.name !== updatedAcc.name) {
+      setTransactions((prev) =>
+        prev.map((t) => (t.account === oldAcc.name ? { ...t, account: updatedAcc.name } : t))
+      );
+    }
+    setAccounts((prev) => prev.map((a) => (a.id === updatedAcc.id ? updatedAcc : a)));
   };
 
   const removeAccount = (id: string) => {
@@ -269,9 +315,11 @@ export function useFinanceStore() {
     summary,
     categoryExpenses,
     addTransaction,
+    updateTransaction,
     removeTransaction,
     toggleTransactionStatus,
     addAccount,
+    updateAccount,
     removeAccount,
     addGoal,
     addContributionToGoal,

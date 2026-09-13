@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Account, Transaction, TransactionType } from '../types';
-import { Plus, Search, Filter, Trash2, CheckCircle, Clock, ArrowUpRight, ArrowDownRight, ArrowLeftRight, X, AlertTriangle, AlertCircle } from 'lucide-react';
+import { Plus, Search, Filter, Trash2, CheckCircle, Clock, ArrowUpRight, ArrowDownRight, ArrowLeftRight, X, AlertTriangle, AlertCircle, Pencil } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
@@ -10,6 +10,7 @@ interface TransactionsViewProps {
   transactions: Transaction[];
   accounts: Account[];
   onAddTransaction: (t: Omit<Transaction, 'id'>) => void;
+  onUpdateTransaction: (t: Transaction) => void;
   onRemoveTransaction: (id: string) => void;
   onToggleStatus: (id: string) => void;
 }
@@ -18,6 +19,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   transactions,
   accounts,
   onAddTransaction,
+  onUpdateTransaction,
   onRemoveTransaction,
   onToggleStatus,
 }) => {
@@ -26,8 +28,9 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
 
-  // New Transaction Form State
+  // Form State
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<TransactionType>('expense');
@@ -36,6 +39,32 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [status, setStatus] = useState<'paid' | 'pending'>('paid');
   const [notes, setNotes] = useState('');
+
+  const handleOpenAddModal = () => {
+    setEditingTransactionId(null);
+    setDescription('');
+    setAmount('');
+    setType('expense');
+    setCategory('');
+    setAccount(accounts[0]?.name || 'Banco Nubank');
+    setDate(new Date().toISOString().split('T')[0]);
+    setStatus('paid');
+    setNotes('');
+    setShowAddModal(true);
+  };
+
+  const handleOpenEditModal = (t: Transaction) => {
+    setEditingTransactionId(t.id);
+    setDescription(t.description);
+    setAmount(t.amount.toString());
+    setType(t.type);
+    setCategory(t.category);
+    setAccount(t.account);
+    setDate(t.date);
+    setStatus(t.status);
+    setNotes(t.notes || '');
+    setShowAddModal(true);
+  };
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -61,22 +90,37 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     e.preventDefault();
     if (!description || !amount || !category || !date) return;
 
-    onAddTransaction({
-      description,
-      amount: parseFloat(amount),
-      type,
-      category,
-      account,
-      date,
-      status,
-      notes: notes.trim() || undefined,
-    });
+    if (editingTransactionId) {
+      onUpdateTransaction({
+        id: editingTransactionId,
+        description,
+        amount: parseFloat(amount),
+        type,
+        category,
+        account,
+        date,
+        status,
+        notes: notes.trim() || undefined,
+      });
+    } else {
+      onAddTransaction({
+        description,
+        amount: parseFloat(amount),
+        type,
+        category,
+        account,
+        date,
+        status,
+        notes: notes.trim() || undefined,
+      });
+    }
 
     // Reset Form
     setDescription('');
     setAmount('');
     setCategory('');
     setNotes('');
+    setEditingTransactionId(null);
     setShowAddModal(false);
   };
 
@@ -109,7 +153,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
         </div>
 
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={handleOpenAddModal}
           className="flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700 text-white font-medium px-5 py-3 rounded-2xl shadow-md shadow-orange-500/20 transition-all text-sm cursor-pointer"
         >
           <Plus className="w-4 h-4" />
@@ -260,14 +304,24 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                       {isIncome ? '+' : '-'} {formatCurrency(t.amount)}
                     </span>
 
-                    {/* Delete */}
-                    <button
-                      onClick={() => onRemoveTransaction(t.id)}
-                      className="text-stone-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors"
-                      title="Excluir Transação"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {/* Edit & Delete Actions */}
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleOpenEditModal(t)}
+                        className="text-stone-400 hover:text-orange-500 p-1.5 rounded-lg hover:bg-orange-500/10 transition-colors cursor-pointer"
+                        title="Editar Transação"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => onRemoveTransaction(t.id)}
+                        className="text-stone-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                        title="Excluir Transação"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
 
                   </div>
                 </motion.div>
@@ -286,10 +340,15 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
             className="w-full max-w-lg rounded-3xl bg-white dark:bg-stone-900 p-7 shadow-2xl border border-stone-200 dark:border-stone-800 my-8"
           >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold font-display text-stone-900 dark:text-stone-50">Nova Transação</h3>
+              <h3 className="text-xl font-bold font-display text-stone-900 dark:text-stone-50">
+                {editingTransactionId ? 'Editar Transação' : 'Nova Transação'}
+              </h3>
               <button
-                onClick={() => setShowAddModal(false)}
-                className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-1 rounded-full"
+                onClick={() => {
+                  setShowAddModal(false);
+                  setEditingTransactionId(null);
+                }}
+                className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-1 rounded-full cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -427,7 +486,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                 type="submit"
                 className="mt-4 w-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-3.5 rounded-2xl shadow-lg shadow-orange-500/20 transition-all text-sm cursor-pointer"
               >
-                Salvar Transação
+                {editingTransactionId ? 'Salvar Alterações' : 'Salvar Transação'}
               </button>
             </form>
           </motion.div>
