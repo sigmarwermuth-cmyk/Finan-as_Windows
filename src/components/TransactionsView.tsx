@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Account, Transaction, TransactionType } from '../types';
-import { Plus, Search, Filter, Trash2, CheckCircle, Clock, ArrowUpRight, ArrowDownRight, ArrowLeftRight, X } from 'lucide-react';
+import { Plus, Search, Filter, Trash2, CheckCircle, Clock, ArrowUpRight, ArrowDownRight, ArrowLeftRight, X, AlertTriangle, AlertCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
+import { getDueDateInfo } from '../utils/dateUtils';
 
 interface TransactionsViewProps {
   transactions: Transaction[];
@@ -84,7 +85,16 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     const matchesSearch = t.description.toLowerCase().includes(search.toLowerCase()) || t.category.toLowerCase().includes(search.toLowerCase());
     const matchesType = filterType === 'all' || t.type === filterType;
     const matchesCategory = filterCategory === 'all' || t.category === filterCategory;
-    const matchesStatus = filterStatus === 'all' || t.status === filterStatus;
+    
+    let matchesStatus = filterStatus === 'all' || t.status === filterStatus;
+    if (filterStatus === 'overdue') {
+      const dueInfo = getDueDateInfo(t.date, t.status);
+      matchesStatus = dueInfo?.type === 'overdue';
+    } else if (filterStatus === 'soon') {
+      const dueInfo = getDueDateInfo(t.date, t.status);
+      matchesStatus = dueInfo?.type === 'soon' || dueInfo?.type === 'today';
+    }
+
     return matchesSearch && matchesType && matchesCategory && matchesStatus;
   });
 
@@ -158,6 +168,8 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
             <option value="all">Todos Status</option>
             <option value="paid">Concluídos / Pagos</option>
             <option value="pending">Pendentes</option>
+            <option value="overdue">⚠️ Vencidos</option>
+            <option value="soon">⏳ Vencem em Breve</option>
           </select>
 
         </div>
@@ -174,6 +186,8 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
             {filtered.map((t) => {
               const isIncome = t.type === 'income';
               const isTransfer = t.type === 'transfer';
+              const dueInfo = getDueDateInfo(t.date, t.status);
+
               return (
                 <motion.div
                   key={t.id}
@@ -181,7 +195,11 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.98 }}
                   layout
-                  className="bg-white dark:bg-stone-900/60 rounded-3xl p-5 border border-stone-200/60 dark:border-stone-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-orange-500/30 transition-all"
+                  className={`bg-white dark:bg-stone-900/60 rounded-3xl p-5 border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
+                    dueInfo?.type === 'overdue'
+                      ? 'border-rose-300 dark:border-rose-900/60 bg-rose-500/[0.02]'
+                      : 'border-stone-200/60 dark:border-stone-800 hover:border-orange-500/30'
+                  }`}
                 >
                   {/* Left Info */}
                   <div className="flex items-center gap-3.5">
@@ -196,7 +214,15 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                     </div>
 
                     <div>
-                      <h4 className="font-semibold text-stone-900 dark:text-stone-100 text-sm font-display">{t.description}</h4>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-semibold text-stone-900 dark:text-stone-100 text-sm font-display">{t.description}</h4>
+                        {dueInfo && (
+                          <span className={`inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full font-semibold ${dueInfo.badgeClass}`}>
+                            {dueInfo.type === 'overdue' ? <AlertTriangle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                            <span>{dueInfo.label}</span>
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center flex-wrap gap-2 mt-1 text-xs text-stone-500 dark:text-stone-400">
                         <span className="bg-stone-100 dark:bg-stone-800 px-2.5 py-0.5 rounded-full font-medium text-stone-700 dark:text-stone-300">
                           {t.category}

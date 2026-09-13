@@ -1,8 +1,9 @@
 import React from 'react';
 import { FinancialSummary, Transaction } from '../types';
-import { ArrowUpRight, ArrowDownRight, Wallet, TrendingUp, AlertCircle, Clock, CheckCircle2 } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Wallet, TrendingUp, AlertCircle, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { motion } from 'motion/react';
+import { getDueDateInfo } from '../utils/dateUtils';
 
 interface DashboardViewProps {
   summary: FinancialSummary;
@@ -224,32 +225,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               ) : (
                 <div className="flex flex-col gap-2.5 max-h-48 overflow-y-auto no-scrollbar">
-                  {pendingTransactions.map((t) => (
-                    <div
-                      key={t.id}
-                      className="flex items-center justify-between bg-stone-50 dark:bg-stone-800/50 p-3 rounded-2xl text-xs border border-stone-100 dark:border-stone-800"
-                    >
-                      <div className="flex items-center gap-2.5 truncate">
-                        <Clock className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                        <div className="truncate">
-                          <p className="font-semibold text-stone-900 dark:text-stone-100 truncate">{t.description}</p>
-                          <p className="text-stone-500 dark:text-stone-400 text-[11px]">{t.category} • {t.date}</p>
+                  {pendingTransactions.map((t) => {
+                    const dueInfo = getDueDateInfo(t.date, t.status);
+                    return (
+                      <div
+                        key={t.id}
+                        className={`flex items-center justify-between p-3 rounded-2xl text-xs border transition-all ${
+                          dueInfo?.type === 'overdue'
+                            ? 'bg-rose-500/10 border-rose-500/20 text-stone-900 dark:text-stone-100'
+                            : 'bg-stone-50 dark:bg-stone-800/50 border-stone-100 dark:border-stone-800'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 truncate">
+                          {dueInfo?.type === 'overdue' ? (
+                            <AlertTriangle className="w-4 h-4 text-rose-500 flex-shrink-0" />
+                          ) : (
+                            <Clock className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                          )}
+                          <div className="truncate">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <p className="font-semibold text-stone-900 dark:text-stone-100 truncate">{t.description}</p>
+                              {dueInfo && (
+                                <span className={`text-[10px] px-2 py-0.2 rounded-full font-semibold ${dueInfo.badgeClass}`}>
+                                  {dueInfo.label}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-stone-500 dark:text-stone-400 text-[11px]">{t.category} • {t.date}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`font-bold ${t.type === 'income' ? 'text-emerald-600' : 'text-stone-900 dark:text-stone-100'}`}>
+                            {formatCurrency(t.amount)}
+                          </span>
+                          <button
+                            onClick={() => onToggleStatus(t.id)}
+                            className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-1.5 rounded-lg transition-colors cursor-pointer"
+                            title="Marcar como Pago"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold ${t.type === 'income' ? 'text-emerald-600' : 'text-stone-900 dark:text-stone-100'}`}>
-                          {formatCurrency(t.amount)}
-                        </span>
-                        <button
-                          onClick={() => onToggleStatus(t.id)}
-                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-1.5 rounded-lg transition-colors"
-                          title="Marcar como Pago"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
