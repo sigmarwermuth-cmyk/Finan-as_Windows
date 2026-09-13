@@ -1,0 +1,6 @@
+{
+  "name": "Finanças Pro",
+  "description": "Aplicativo completo de controle financeiro pessoal com relatórios gráficos, orçamentos, metas de economia, controle de cartões e contas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
