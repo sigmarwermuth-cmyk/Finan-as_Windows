@@ -31,10 +31,13 @@ export default function App() {
     updateAccount,
     removeAccount,
     addGoal,
+    updateGoal,
     addContributionToGoal,
     removeGoal,
     updateBudget,
+    updateBudgetFull,
     addBudget,
+    removeBudget,
     resetToSampleData,
   } = useFinanceStore();
 
@@ -125,8 +128,11 @@ export default function App() {
                 goals={goals}
                 categoryExpenses={categoryExpenses}
                 onUpdateBudget={updateBudget}
+                onUpdateBudgetFull={updateBudgetFull}
                 onAddBudget={addBudget}
+                onRemoveBudget={removeBudget}
                 onAddGoal={addGoal}
+                onUpdateGoal={updateGoal}
                 onAddContributionToGoal={addContributionToGoal}
                 onRemoveGoal={removeGoal}
               />

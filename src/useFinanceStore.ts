@@ -203,6 +203,10 @@ export function useFinanceStore() {
     setGoals((prev) => [...prev, newGoal]);
   };
 
+  const updateGoal = (updatedGoal: FinancialGoal) => {
+    setGoals((prev) => prev.map((g) => (g.id === updatedGoal.id ? updatedGoal : g)));
+  };
+
   const addContributionToGoal = (id: string, amount: number) => {
     setGoals((prev) =>
       prev.map((g) => (g.id === id ? { ...g, currentAmount: g.currentAmount + amount } : g))
@@ -220,8 +224,16 @@ export function useFinanceStore() {
     );
   };
 
+  const updateBudgetFull = (updatedBudget: CategoryBudget) => {
+    setBudgets((prev) => prev.map((b) => (b.id === updatedBudget.id ? updatedBudget : b)));
+  };
+
   const addBudget = (category: string, allocatedAmount: number, color: string) => {
     setBudgets((prev) => [...prev, { id: uuidv4(), category, allocatedAmount, color }]);
+  };
+
+  const removeBudget = (id: string) => {
+    setBudgets((prev) => prev.filter((b) => b.id !== id));
   };
 
   // Reset & Import
@@ -322,10 +334,13 @@ export function useFinanceStore() {
     updateAccount,
     removeAccount,
     addGoal,
+    updateGoal,
     addContributionToGoal,
     removeGoal,
     updateBudget,
+    updateBudgetFull,
     addBudget,
+    removeBudget,
     resetToSampleData,
     clearAllData,
   };

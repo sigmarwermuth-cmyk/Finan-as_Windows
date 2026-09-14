@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CategoryBudget, FinancialGoal, Transaction } from '../types';
-import { Target, PieChart as PieIcon, Plus, Trash2, TrendingUp, AlertTriangle, CheckCircle2, DollarSign, X } from 'lucide-react';
+import { Target, PieChart as PieIcon, Plus, Trash2, TrendingUp, AlertTriangle, CheckCircle2, DollarSign, X, Pencil } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface BudgetsAndGoalsViewProps {
@@ -8,8 +8,11 @@ interface BudgetsAndGoalsViewProps {
   goals: FinancialGoal[];
   categoryExpenses: { name: string; value: number }[];
   onUpdateBudget: (category: string, amount: number) => void;
+  onUpdateBudgetFull: (budget: CategoryBudget) => void;
   onAddBudget: (category: string, amount: number, color: string) => void;
+  onRemoveBudget: (id: string) => void;
   onAddGoal: (goal: Omit<FinancialGoal, 'id'>) => void;
+  onUpdateGoal: (goal: FinancialGoal) => void;
   onAddContributionToGoal: (id: string, amount: number) => void;
   onRemoveGoal: (id: string) => void;
 }
@@ -19,24 +22,29 @@ export const BudgetsAndGoalsView: React.FC<BudgetsAndGoalsViewProps> = ({
   goals,
   categoryExpenses,
   onUpdateBudget,
+  onUpdateBudgetFull,
   onAddBudget,
+  onRemoveBudget,
   onAddGoal,
+  onUpdateGoal,
   onAddContributionToGoal,
   onRemoveGoal,
 }) => {
   const [showGoalModal, setShowGoalModal] = useState(false);
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
   const [showContributionModal, setShowContributionModal] = useState<{ id: string; title: string } | null>(null);
   const [contributionAmount, setContributionAmount] = useState('');
 
-  // New Goal Form
+  // Goal Form State
   const [goalTitle, setGoalTitle] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [initialSaved, setInitialSaved] = useState('');
   const [deadline, setDeadline] = useState('2026-12-31');
   const [goalCategory, setGoalCategory] = useState('Reserva');
 
-  // New Budget Form
+  // Budget Form State
   const [showAddBudgetModal, setShowAddBudgetModal] = useState(false);
+  const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
   const [newBudgetCategory, setNewBudgetCategory] = useState('');
   const [newBudgetAmount, setNewBudgetAmount] = useState('');
 
@@ -44,22 +52,55 @@ export const BudgetsAndGoalsView: React.FC<BudgetsAndGoalsViewProps> = ({
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
+  const handleOpenAddGoalModal = () => {
+    setEditingGoalId(null);
+    setGoalTitle('');
+    setTargetAmount('');
+    setInitialSaved('');
+    setDeadline('2026-12-31');
+    setGoalCategory('Reserva');
+    setShowGoalModal(true);
+  };
+
+  const handleOpenEditGoalModal = (goal: FinancialGoal) => {
+    setEditingGoalId(goal.id);
+    setGoalTitle(goal.title);
+    setTargetAmount(goal.targetAmount.toString());
+    setInitialSaved(goal.currentAmount.toString());
+    setDeadline(goal.deadline);
+    setGoalCategory(goal.category);
+    setShowGoalModal(true);
+  };
+
   const handleGoalSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!goalTitle || !targetAmount) return;
 
-    onAddGoal({
-      title: goalTitle,
-      targetAmount: parseFloat(targetAmount),
-      currentAmount: initialSaved ? parseFloat(initialSaved) : 0,
-      deadline,
-      category: goalCategory,
-      color: '#10B981',
-    });
+    if (editingGoalId) {
+      onUpdateGoal({
+        id: editingGoalId,
+        title: goalTitle,
+        targetAmount: parseFloat(targetAmount),
+        currentAmount: initialSaved ? parseFloat(initialSaved) : 0,
+        deadline,
+        category: goalCategory,
+        color: '#10B981',
+      });
+    } else {
+      onAddGoal({
+        title: goalTitle,
+        targetAmount: parseFloat(targetAmount),
+        currentAmount: initialSaved ? parseFloat(initialSaved) : 0,
+        deadline,
+        category: goalCategory,
+        color: '#10B981',
+      });
+    }
 
     setGoalTitle('');
     setTargetAmount('');
     setInitialSaved('');
+    setEditingGoalId(null);
     setShowGoalModal(false);
   };
 
@@ -72,12 +113,36 @@ export const BudgetsAndGoalsView: React.FC<BudgetsAndGoalsViewProps> = ({
     }
   };
 
+  const handleOpenAddBudgetModal = () => {
+    setEditingBudgetId(null);
+    setNewBudgetCategory('');
+    setNewBudgetAmount('');
+    setShowAddBudgetModal(true);
+  };
+
+  const handleOpenEditBudgetModal = (budget: CategoryBudget) => {
+    setEditingBudgetId(budget.id);
+    setNewBudgetCategory(budget.category);
+    setNewBudgetAmount(budget.allocatedAmount.toString());
+    setShowAddBudgetModal(true);
+  };
+
   const handleAddBudgetSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (newBudgetCategory && newBudgetAmount) {
-      onAddBudget(newBudgetCategory, parseFloat(newBudgetAmount), '#F97316');
+      if (editingBudgetId) {
+        onUpdateBudgetFull({
+          id: editingBudgetId,
+          category: newBudgetCategory,
+          allocatedAmount: parseFloat(newBudgetAmount),
+          color: '#F97316',
+        });
+      } else {
+        onAddBudget(newBudgetCategory, parseFloat(newBudgetAmount), '#F97316');
+      }
       setNewBudgetCategory('');
       setNewBudgetAmount('');
+      setEditingBudgetId(null);
       setShowAddBudgetModal(false);
     }
   };
@@ -100,7 +165,7 @@ export const BudgetsAndGoalsView: React.FC<BudgetsAndGoalsViewProps> = ({
           </h3>
 
           <button
-            onClick={() => setShowAddBudgetModal(true)}
+            onClick={handleOpenAddBudgetModal}
             className="flex items-center gap-1.5 text-xs font-semibold bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 px-3 py-2 rounded-xl transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4 text-orange-500" />
@@ -123,9 +188,26 @@ export const BudgetsAndGoalsView: React.FC<BudgetsAndGoalsViewProps> = ({
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold text-stone-900 dark:text-stone-100 text-sm font-display">
-                      {b.category}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-stone-900 dark:text-stone-100 text-sm font-display">
+                        {b.category}
+                      </span>
+                      <button
+                        onClick={() => handleOpenEditBudgetModal(b)}
+                        className="text-stone-400 hover:text-orange-500 p-1 rounded transition-colors cursor-pointer"
+                        title="Editar Orçamento"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => onRemoveBudget(b.id)}
+                        className="text-stone-400 hover:text-rose-500 p-1 rounded transition-colors cursor-pointer"
+                        title="Excluir Orçamento"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
                     <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
                       isExceeded
                         ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
@@ -178,7 +260,7 @@ export const BudgetsAndGoalsView: React.FC<BudgetsAndGoalsViewProps> = ({
           </h3>
 
           <button
-            onClick={() => setShowGoalModal(true)}
+            onClick={handleOpenAddGoalModal}
             className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white font-medium px-4 py-2.5 rounded-2xl shadow-md shadow-orange-500/20 transition-all text-xs cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -201,13 +283,22 @@ export const BudgetsAndGoalsView: React.FC<BudgetsAndGoalsViewProps> = ({
                     <span className="text-xs font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                       {goal.category}
                     </span>
-                    <button
-                      onClick={() => onRemoveGoal(goal.id)}
-                      className="text-stone-400 hover:text-rose-500 p-1"
-                      title="Excluir Meta"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleOpenEditGoalModal(goal)}
+                        className="text-stone-400 hover:text-orange-500 p-1 rounded transition-colors cursor-pointer"
+                        title="Editar Meta"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => onRemoveGoal(goal.id)}
+                        className="text-stone-400 hover:text-rose-500 p-1 rounded transition-colors cursor-pointer"
+                        title="Excluir Meta"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
                   <h4 className="font-bold text-stone-900 dark:text-stone-50 text-base font-display">{goal.title}</h4>
@@ -252,7 +343,7 @@ export const BudgetsAndGoalsView: React.FC<BudgetsAndGoalsViewProps> = ({
         </div>
       </div>
 
-      {/* Add Goal Modal */}
+      {/* Add / Edit Goal Modal */}
       {showGoalModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 backdrop-blur-sm p-4 overflow-y-auto">
           <motion.div
@@ -261,8 +352,16 @@ export const BudgetsAndGoalsView: React.FC<BudgetsAndGoalsViewProps> = ({
             className="w-full max-w-md rounded-3xl bg-white dark:bg-stone-900 p-7 shadow-2xl border border-stone-200 dark:border-stone-800"
           >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold font-display text-stone-900 dark:text-stone-50">Nova Meta Financeira</h3>
-              <button onClick={() => setShowGoalModal(false)} className="text-stone-400 hover:text-stone-600 p-1">
+              <h3 className="text-xl font-bold font-display text-stone-900 dark:text-stone-50">
+                {editingGoalId ? 'Editar Meta Financeira' : 'Nova Meta Financeira'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowGoalModal(false);
+                  setEditingGoalId(null);
+                }}
+                className="text-stone-400 hover:text-stone-600 p-1 cursor-pointer"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -295,7 +394,7 @@ export const BudgetsAndGoalsView: React.FC<BudgetsAndGoalsViewProps> = ({
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-stone-700 dark:text-stone-300">Já Guardado (R$)</label>
+                  <label className="text-xs font-medium text-stone-700 dark:text-stone-300">Valor Atual (R$)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -335,7 +434,7 @@ export const BudgetsAndGoalsView: React.FC<BudgetsAndGoalsViewProps> = ({
                 type="submit"
                 className="mt-4 w-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-3.5 rounded-2xl shadow-lg shadow-orange-500/20 transition-all text-sm cursor-pointer"
               >
-                Criar Meta
+                {editingGoalId ? 'Salvar Alterações' : 'Criar Meta'}
               </button>
             </form>
           </motion.div>
@@ -385,7 +484,7 @@ export const BudgetsAndGoalsView: React.FC<BudgetsAndGoalsViewProps> = ({
         </div>
       )}
 
-      {/* Add Budget Modal */}
+      {/* Add / Edit Budget Modal */}
       {showAddBudgetModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 backdrop-blur-sm p-4 overflow-y-auto">
           <motion.div
@@ -395,9 +494,15 @@ export const BudgetsAndGoalsView: React.FC<BudgetsAndGoalsViewProps> = ({
           >
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-base font-bold font-display text-stone-900 dark:text-stone-50">
-                Novo Orçamento por Categoria
+                {editingBudgetId ? 'Editar Orçamento' : 'Novo Orçamento por Categoria'}
               </h4>
-              <button onClick={() => setShowAddBudgetModal(false)} className="text-stone-400 hover:text-stone-600 p-1">
+              <button
+                onClick={() => {
+                  setShowAddBudgetModal(false);
+                  setEditingBudgetId(null);
+                }}
+                className="text-stone-400 hover:text-stone-600 p-1 cursor-pointer"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -432,7 +537,7 @@ export const BudgetsAndGoalsView: React.FC<BudgetsAndGoalsViewProps> = ({
                 type="submit"
                 className="w-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-3 rounded-2xl shadow-md shadow-orange-500/20 transition-all text-xs cursor-pointer"
               >
-                Salvar Orçamento
+                {editingBudgetId ? 'Salvar Alterações' : 'Salvar Orçamento'}
               </button>
             </form>
           </motion.div>
